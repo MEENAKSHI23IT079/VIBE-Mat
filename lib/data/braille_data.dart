@@ -284,7 +284,21 @@ final List<BrailleItem> allBrailleItems = [
   ...specialSymbolsData,
   ...bracketsData,
   ...greekLettersData,
+  ...indicatorsData,
+  ...fractionsPowersData,
+  ...advancedMathData,
+  ...algebraData,
+  ...geometryUnitsData,
+  ...scienceSymbolsData,
+
+  ...scienceSymbolsData,
+  ...scientificIndicatorsData,
+  ...scientificUnitsData,
+  ...physicsSymbolsData,
+  ...chemistryElementsData,
+  ...biologySymbolsData,
 ];
+
 
 List<BrailleItem> getBrailleDataList(String title) {
   switch (title) {
@@ -293,7 +307,272 @@ List<BrailleItem> getBrailleDataList(String title) {
     case 'Special Symbols': return specialSymbolsData;
     case 'Brackets': return bracketsData;
     case 'Greek Letters': return greekLettersData;
+    case 'Indicators': return indicatorsData;
+    case 'Fractions & Powers': return fractionsPowersData;
+    case 'Advanced Math': return advancedMathData;
+    case 'Algebra': return algebraData;
+    case 'Geometry & Units': return geometryUnitsData;
+    case 'Science Symbols': return scienceSymbolsData;
+
+    case 'Scientific Indicators': return scientificIndicatorsData;
+    case 'Scientific Units': return scientificUnitsData;
+    case 'Physics Symbols': return physicsSymbolsData;
+    case 'Chemistry Symbols': return chemistryElementsData;
+    case 'Biology Symbols': return biologySymbolsData;
+    case 'Science Symbols': return scienceSymbolsData;
+
     default: return [];
   }
 }
 
+
+final List<BrailleItem> indicatorsData = const [
+  BrailleItem(
+    name: "Number Indicator",
+    symbol: "",
+    dots: [3, 4, 5, 6],
+    audioDescription: "Number indicator, Braille dots 3 4 5 6",
+  ),
+  BrailleItem(
+    name: "Capital Indicator",
+    symbol: "",
+    dots: [6],
+    audioDescription: "Capital indicator, Braille dot 6",
+  ),
+  BrailleItem(
+    name: "Grade 1 Indicator",
+    symbol: "",
+    dots: [5, 6],
+    audioDescription: "Grade 1 indicator, Braille dots 5 6",
+  ),
+  BrailleItem(
+    name: "Subscript Indicator",
+    symbol: "",
+    dots: [5],
+    audioDescription: "Subscript indicator, Braille dot 5",
+  ),
+];
+
+final List<BrailleItem> fractionsPowersData = const [
+  BrailleItem(
+    name: "Fraction Line",
+    symbol: "/",
+    dots: [3, 4],
+    audioDescription: "Fraction line, Braille dots 3 4",
+  ),
+  BrailleItem(
+    name: "Superscript Indicator",
+    symbol: "^",
+    dots: [4, 5],
+    audioDescription: "Superscript indicator, Braille dots 4 5",
+  ),
+  BrailleItem(
+    name: "Subscript Indicator",
+    symbol: "_",
+    dots: [5],
+    audioDescription: "Subscript indicator, Braille dot 5",
+  ),
+];
+
+final List<BrailleItem> advancedMathData = const [
+  BrailleItem(
+    name: "Infinity",
+    symbol: "∞",
+    dots: [2, 3, 5, 6],
+    audioDescription: "Infinity, Braille dots 2 3 5 6",
+  ),
+  BrailleItem(
+    name: "Factorial",
+    symbol: "!",
+    dots: [2, 3, 5],
+    audioDescription: "Factorial, Braille dots 2 3 5",
+  ),
+  BrailleItem(
+    name: "Plus Minus",
+    symbol: "±",
+    dots: [2, 3, 5, 6],
+    audioDescription: "Plus minus, Braille dots 2 3 5 6",
+  ),
+];
+
+final List<BrailleItem> algebraData = const [
+  BrailleItem(
+    name: "Variable x",
+    symbol: "x",
+    dots: [1, 3, 4, 6],
+    audioDescription: "Variable x, Braille dots 1 3 4 6",
+  ),
+  BrailleItem(
+    name: "Variable y",
+    symbol: "y",
+    dots: [1, 3, 4, 5, 6],
+    audioDescription: "Variable y, Braille dots 1 3 4 5 6",
+  ),
+  BrailleItem(
+    name: "Variable z",
+    symbol: "z",
+    dots: [1, 3, 5, 6],
+    audioDescription: "Variable z, Braille dots 1 3 5 6",
+  ),
+];
+
+final List<BrailleItem> geometryUnitsData = const [
+  BrailleItem(
+    name: "Angle",
+    symbol: "∠",
+    dots: [1, 2, 4, 5],
+    audioDescription: "Angle, Braille dots 1 2 4 5",
+  ),
+  BrailleItem(
+    name: "Degree",
+    symbol: "°",
+    dots: [1, 5],
+    audioDescription: "Degree symbol, Braille dots 1 5",
+  ),
+  BrailleItem(
+    name: "Parallel",
+    symbol: "∥",
+    dots: [3, 4, 6],
+    audioDescription: "Parallel, Braille dots 3 4 6",
+  ),
+];
+
+final List<BrailleItem> scienceSymbolsData = const [
+  BrailleItem(
+    name: "Ohm",
+    symbol: "Ω",
+    dots: [1, 2, 5],
+    audioDescription: "Ohm, Braille dots 1 2 5",
+  ),
+  BrailleItem(
+    name: "Delta Change",
+    symbol: "Δ",
+    dots: [1, 4, 5],
+    audioDescription: "Delta change, Braille dots 1 4 5",
+  ),
+  BrailleItem(
+    name: "Chemical Reaction",
+    symbol: "→",
+    dots: [1, 2, 5, 6],
+    audioDescription: "Chemical reaction arrow, Braille dots 1 2 5 6",
+  ),
+];
+/// -------------------- SCIENCE --------------------
+
+final List<BrailleItem> scientificIndicatorsData = const [
+  BrailleItem(
+    name: "Number Sign",
+    symbol: "#",
+    dots: [3, 4, 5, 6],
+    audioDescription: "Number sign. Braille dots three four five six",
+  ),
+  BrailleItem(
+    name: "Decimal Point",
+    symbol: ".",
+    dots: [4, 6],
+    audioDescription: "Decimal point. Braille dots four six",
+  ),
+  BrailleItem(
+    name: "Capital Letter Indicator",
+    symbol: "",
+    dots: [6],
+    audioDescription: "Capital letter indicator. Braille dot six",
+  ),
+];
+
+final List<BrailleItem> scientificUnitsData = const [
+  BrailleItem(
+    name: "Meter",
+    symbol: "m",
+    dots: [1, 3, 4],
+    audioDescription: "Meter. Braille dots one three four",
+  ),
+  BrailleItem(
+    name: "Second",
+    symbol: "s",
+    dots: [2, 3, 4],
+    audioDescription: "Second. Braille dots two three four",
+  ),
+  BrailleItem(
+    name: "Kilogram",
+    symbol: "kg",
+    dots: [1, 3, 4, 1, 2, 4],
+    audioDescription:
+        "Kilogram. Braille dots one three four, one two four",
+  ),
+  BrailleItem(
+    name: "Ampere",
+    symbol: "A",
+    dots: [1],
+    audioDescription: "Ampere. Braille dot one",
+  ),
+];
+
+final List<BrailleItem> physicsSymbolsData = const [
+  BrailleItem(
+    name: "Velocity",
+    symbol: "v",
+    dots: [1, 2, 3, 6],
+    audioDescription: "Velocity. Braille dots one two three six",
+  ),
+  BrailleItem(
+    name: "Acceleration",
+    symbol: "a",
+    dots: [1],
+    audioDescription: "Acceleration. Braille dot one",
+  ),
+  BrailleItem(
+    name: "Force",
+    symbol: "F",
+    dots: [1, 2, 4],
+    audioDescription: "Force. Braille dots one two four",
+  ),
+  BrailleItem(
+    name: "Energy",
+    symbol: "E",
+    dots: [1, 5],
+    audioDescription: "Energy. Braille dots one five",
+  ),
+];
+
+final List<BrailleItem> chemistryElementsData = const [
+  BrailleItem(
+    name: "Hydrogen",
+    symbol: "H",
+    dots: [1, 2, 5],
+    audioDescription: "Hydrogen. Braille dots one two five",
+  ),
+  BrailleItem(
+    name: "Oxygen",
+    symbol: "O",
+    dots: [1, 3, 5],
+    audioDescription: "Oxygen. Braille dots one three five",
+  ),
+  BrailleItem(
+    name: "Carbon",
+    symbol: "C",
+    dots: [1, 4],
+    audioDescription: "Carbon. Braille dots one four",
+  ),
+  BrailleItem(
+    name: "Nitrogen",
+    symbol: "N",
+    dots: [1, 3, 4, 5],
+    audioDescription: "Nitrogen. Braille dots one three four five",
+  ),
+];
+
+final List<BrailleItem> biologySymbolsData = const [
+  BrailleItem(
+    name: "DNA",
+    symbol: "DNA",
+    dots: [1, 4, 5],
+    audioDescription: "DNA. Braille dots one four five",
+  ),
+  BrailleItem(
+    name: "RNA",
+    symbol: "RNA",
+    dots: [1, 2, 3, 5],
+    audioDescription: "RNA. Braille dots one two three five",
+  ),
+];

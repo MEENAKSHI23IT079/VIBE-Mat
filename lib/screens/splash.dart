@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../service/tts_service.dart';
+import '../service/stt_service.dart';
 import 'home.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -12,31 +15,77 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool loading = false;
+  bool _navigated = false;
+
+  final TtsService _ttsService = TtsService();
+  final SttService _sttService = SttService();
+
   @override
   void initState() {
     super.initState();
-    // Navigate to HomePage after a delay
-    Timer(const Duration(seconds: 3), () { // Adjust duration as needed
-      // Use pushReplacement to prevent going back to splash screen
-      setState(() {
-        loading= true;
-      });
+    _initSplash();
+  }
+
+  Future<void> _initSplash() async {
+    // Simulate loading
+    Timer(const Duration(seconds: 3), () async {
+      setState(() => loading = true);
+
+      await Permission.microphone.request();
+      await _ttsService.initialize();
+      await _sttService.initialize(_onSpeechResult, (_) {});
+
+      await _ttsService.speak(
+        "Welcome to VIBE. Say yes to start, or press the start button."
+      );
+
+      _sttService.startListening(_onSpeechResult);
     });
+  }
+
+  void _onSpeechResult(String text) {
+    if (_navigated) return;
+
+    final spoken = text.toLowerCase();
+
+    if (spoken.contains('yes') ||
+        spoken.contains('start') ||
+        spoken.contains('go')) {
+      _navigateToHome();
+    }
+  }
+
+  void _navigateToHome() async {
+    if (_navigated) return;
+    _navigated = true;
+
+    _sttService.stopListening();
+    await _ttsService.stop();
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ttsService.stop();
+    _sttService.cancelListening();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Customize your splash screen appearance
-      backgroundColor: Theme.of(context).primaryColor, // Example background
+      backgroundColor: Theme.of(context).primaryColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Optional: Add an icon or logo
-            // Icon(Icons.accessibility_new, size: 100, color: Colors.white),
-            // SizedBox(height: 20),
-            Text(
+            const Text(
               'VIBE',
               style: TextStyle(
                 fontSize: 32,
@@ -44,45 +93,43 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: 10),
-            Container(
-              child:
-              loading?
-              Column(
-                children: [
-                  //startbutton
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HomePage()),
-                      );
-                    },
-                    child: const Text('Start'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                      textStyle: const TextStyle(fontSize: 18),
-                    ),
-                  ),
 
-                ],
-              ):
-              Column(
-                children: [
-                  Text(
-                    'Loading...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
+            const SizedBox(height: 20),
+
+            loading
+                ? Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: _navigateToHome,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 30, vertical: 15),
+                        ),
+                        child: const Text(
+                          'Start',
+                          style:
+                              TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: const [
+                      Text(
+                        'Loading...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      SizedBox(height: 40),
+                      CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 40),
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ],
-              ),
-            )
           ],
         ),
       ),

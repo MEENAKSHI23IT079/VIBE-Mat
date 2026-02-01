@@ -1,31 +1,29 @@
-import 'package:braille_app_new/screens/splash.dart';
 import 'package:flutter/material.dart';
-// Remove HomePage import if not needed elsewhere in main
-// import 'screens/home_page.dart';
+import 'package:provider/provider.dart';
+
+import 'screens/splash.dart';
+import 'theme/theme_provider.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const BrailleApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const BrailleApp(),
+    ),
+  );
 }
 
 class BrailleApp extends StatelessWidget {
-  const BrailleApp({Key? key}) : super(key: key);
+  const BrailleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return MaterialApp(
       title: 'Braille Learner',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-            textStyle: const TextStyle(fontSize: 18),
-          ),
-        ),
-      ),
-      home: const SplashScreen(), // <-- Use SplashScreen here
+      theme: themeProvider.themeData,
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
