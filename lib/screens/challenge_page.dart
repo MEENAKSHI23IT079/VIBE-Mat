@@ -5,9 +5,10 @@ import '../data/braille_data.dart';
 import '../models/barille_item.dart';
 import '../widgets/braille_dots_widget.dart';
 import '../service/tts_service.dart';
+import '../service/stt_service.dart';
 
 class ChallengePage extends StatefulWidget {
-  final String module; // "Maths" or "Science"
+  final String module;
 
   const ChallengePage({Key? key, required this.module}) : super(key: key);
 
@@ -18,151 +19,172 @@ class ChallengePage extends StatefulWidget {
 class _ChallengePageState extends State<ChallengePage> {
   final Random _random = Random();
   final TtsService _ttsService = TtsService();
+  final SttService _sttService = SttService();
 
-  late List<BrailleItem> _availableItems;
-  final int _totalQuestions = 10;
+  static const int _totalQuestions = 25;
 
+  late List<BrailleItem> _questionPool;
+  late List<BrailleItem> _questions;
+
+  int _currentIndex = 0;
   int _score = 0;
-  int _questionNumber = 0;
-  bool _challengeFinished = false;
+  bool _finished = false;
 
   BrailleItem? _currentItem;
   List<BrailleItem> _options = [];
-  int? _selectedOptionIndex;
-  bool _isAnswered = false;
-
-  String _statusText = '';
 
   @override
   void initState() {
     super.initState();
-    _ttsService.initialize();
-    _startChallenge();
+    _initChallenge();
+  }
+
+  Future<void> _initChallenge() async {
+    await _ttsService.initialize();
+    _ttsService.setSpeechRate(0.4); // slow voice
+
+    await _sttService.initialize(
+      (s) => debugPrint("STT: $s"),
+      (e) => debugPrint("STT error: $e"),
+    );
+
+    _loadQuestions();
+    _loadQuestion();
   }
 
   @override
   void dispose() {
     _ttsService.stop();
+    _sttService.stopListening();
     super.dispose();
   }
 
   // ---------------- LOAD DATA ----------------
 
-  List<BrailleItem> _loadModuleData() {
-    final List<String> categories =
-        widget.module == 'Science'
-            ? [
-                'Scientific Indicators',
-                'Scientific Units',
-                'Physics Symbols',
-                'Chemistry Elements',
-                'Biology Symbols',
-              ]
-            : [
-                'Numbers (0-9)',
-                'Basic Operations',
-                'Special Symbols',
-                'Brackets',
-                'Greek Letters',
-              ];
+  List<BrailleItem> _loadAllModuleItems() {
+    final categories = widget.module == 'Science'
+        ? [
+            'Scientific Indicators',
+            'Scientific Units',
+            'Physics Symbols',
+            'Chemistry Elements',
+            'Biology Symbols',
+          ]
+        : [
+            'Numbers (0-9)',
+            'Basic Operations',
+            'Special Symbols',
+            'Brackets',
+            'Greek Letters',
+            'Indicators',
+            'Fractions & Powers',
+            'Advanced Math',
+            'Algebra',
+            'Geometry & Units',
+          ];
 
     final List<BrailleItem> items = [];
-
-    for (final category in categories) {
-      items.addAll(getBrailleDataList(category));
+    for (final c in categories) {
+      items.addAll(getBrailleDataList(c));
     }
-
     return items;
   }
 
-  // ---------------- CHALLENGE FLOW ----------------
-
-  void _startChallenge() {
-    _availableItems = _loadModuleData();
-
-    setState(() {
-      _score = 0;
-      _questionNumber = 0;
-      _challengeFinished = false;
-      _isAnswered = false;
-      _selectedOptionIndex = null;
-      _statusText = '';
-    });
-
-    if (_availableItems.length < 4) {
-      setState(() {
-        _challengeFinished = true;
-        _statusText = 'Not enough data for ${widget.module}';
-      });
-      return;
-    }
-
-    _loadNewQuestion();
+  void _loadQuestions() {
+    _questionPool = _loadAllModuleItems()..shuffle();
+    _questions = _questionPool.take(_totalQuestions).toList();
   }
 
-  Future<void> _loadNewQuestion() async {
-    await _ttsService.stop();
+  // ---------------- QUESTION FLOW ----------------
 
-    if (_questionNumber >= _totalQuestions) {
-      setState(() => _challengeFinished = true);
-      _ttsService.speak(
-        "Challenge completed. Your score is $_score",
-      );
+  Future<void> _loadQuestion() async {
+    if (_currentIndex >= _questions.length) {
+      _finishChallenge();
       return;
     }
 
-    setState(() {
-      _questionNumber++;
-      _isAnswered = false;
-      _selectedOptionIndex = null;
-      _statusText = '';
-    });
-
-    _currentItem =
-        _availableItems[_random.nextInt(_availableItems.length)];
+    _currentItem = _questions[_currentIndex];
 
     _options = [_currentItem!];
-    final distractors = List.from(_availableItems)..remove(_currentItem);
+    final distractors =
+        List<BrailleItem>.from(_questionPool)..remove(_currentItem);
     distractors.shuffle();
 
     while (_options.length < 4) {
       _options.add(distractors.removeLast());
     }
-
     _options.shuffle();
 
-    _ttsService.speak(_currentItem!.dotsAudioDescription);
+    await _readQuestion();
+    _listenForAnswer();
   }
 
-  Future<void> _checkAnswer(int index) async {
-    if (_isAnswered) return;
-
-    final bool isCorrect = _options[index] == _currentItem;
+  Future<void> _readQuestion() async {
     await _ttsService.stop();
 
-    setState(() {
-      _isAnswered = true;
-      _selectedOptionIndex = index;
-      if (isCorrect) _score++;
-      _statusText = isCorrect ? 'Correct!' : 'Wrong!';
-    });
+    await _ttsService.speak(
+      "Question ${_currentIndex + 1}. Identify this Braille symbol.",
+    );
 
-    _ttsService.speak(
-      isCorrect
-          ? "Correct answer"
-          : "Wrong answer. The correct answer is ${_currentItem!.displayName}",
+    await _ttsService.speak(_currentItem!.dotsAudioDescription);
+
+    for (int i = 0; i < _options.length; i++) {
+      final letter = String.fromCharCode(65 + i);
+      await _ttsService.speak(
+        "Option $letter. ${_options[i].displayName}",
+      );
+    }
+
+    await _ttsService.speak(
+      "Please say option A, B, C or D",
     );
   }
 
-  // ---------------- UI HELPERS ----------------
+  // ---------------- VOICE ANSWER ----------------
 
-  Color _getButtonColor(int index) {
-    if (!_isAnswered) return Colors.blue;
+  void _listenForAnswer() {
+    _sttService.startListening(_processVoiceAnswer);
+  }
 
-    if (_options[index] == _currentItem) return Colors.green;
-    if (index == _selectedOptionIndex) return Colors.red;
+  Future<void> _processVoiceAnswer(String text) async {
+    _sttService.stopListening();
+    final answer = text.toLowerCase();
 
-    return Colors.grey;
+    int? selectedIndex;
+
+    if (answer.contains('a')) selectedIndex = 0;
+    if (answer.contains('b')) selectedIndex = 1;
+    if (answer.contains('c')) selectedIndex = 2;
+    if (answer.contains('d')) selectedIndex = 3;
+
+    if (selectedIndex == null) {
+      await _ttsService.speak("I did not understand. Please repeat.");
+      _listenForAnswer();
+      return;
+    }
+
+    final correct = _options[selectedIndex] == _currentItem;
+
+    if (correct) {
+      _score++;
+      await _ttsService.speak("Correct");
+    } else {
+      await _ttsService.speak(
+        "Wrong. Correct answer is ${_currentItem!.displayName}",
+      );
+    }
+
+    _currentIndex++;
+    Future.delayed(const Duration(seconds: 1), _loadQuestion);
+  }
+
+  // ---------------- FINISH ----------------
+
+  Future<void> _finishChallenge() async {
+    setState(() => _finished = true);
+    await _ttsService.speak(
+      "Challenge completed. Your score is $_score out of $_totalQuestions",
+    );
   }
 
   // ---------------- UI ----------------
@@ -171,105 +193,50 @@ class _ChallengePageState extends State<ChallengePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _challengeFinished
-              ? '${widget.module} Challenge Complete'
-              : '${widget.module} – Question $_questionNumber / $_totalQuestions',
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Center(child: Text('Score: $_score')),
-          )
-        ],
+        title: Text('${widget.module} Voice Challenge'),
       ),
-      body: _challengeFinished
-          ? _buildResultScreen()
-          : _buildQuestionScreen(),
+      body: _finished
+          ? _buildResult()
+          : _buildQuestionView(),
     );
   }
 
-  Widget _buildQuestionScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Text(
-            'Identify this ${widget.module} Braille notation',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-
-          BrailleDotsWidget(item: _currentItem!, dotSize: 40),
-          const SizedBox(height: 20),
-
-          if (_statusText.isNotEmpty)
-            Text(
-              _statusText,
-              style: TextStyle(
-                fontSize: 16,
-                color:
-                    _statusText == 'Correct!' ? Colors.green : Colors.red,
-              ),
-            ),
-
-          const SizedBox(height: 20),
-
-          ..._options.asMap().entries.map((entry) {
-            final int i = entry.key;
-            final BrailleItem item = entry.value;
-            final String label =
-                String.fromCharCode(65 + i); // A B C D
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: ElevatedButton(
-                onPressed: () => _checkAnswer(i),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _getButtonColor(i),
-                  minimumSize: const Size(double.infinity, 50),
+  Widget _buildQuestionView() {
+    return Center(
+      child: _currentItem == null
+          ? const CircularProgressIndicator()
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Question ${_currentIndex + 1} / $_totalQuestions',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                child: Text(
-                  '$label : ${item.displayName}',
-                  style: const TextStyle(color: Colors.white),
+                const SizedBox(height: 30),
+                BrailleDotsWidget(item: _currentItem!, dotSize: 45),
+                const SizedBox(height: 30),
+                const Text(
+                  'Answer using voice',
+                  style: TextStyle(fontStyle: FontStyle.italic),
                 ),
-              ),
-            );
-          }),
-
-          const SizedBox(height: 20),
-
-          ElevatedButton.icon(
-            onPressed: _isAnswered ? _loadNewQuestion : null,
-            icon: const Icon(Icons.arrow_forward),
-            label: const Text('Next Question'),
-          ),
-        ],
-      ),
+              ],
+            ),
     );
   }
 
-  Widget _buildResultScreen() {
+  Widget _buildResult() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
-            'Challenge Complete! 🎉',
+            'Challenge Complete 🎉',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
           Text('Score: $_score / $_totalQuestions'),
           const SizedBox(height: 30),
           ElevatedButton(
-            onPressed: _startChallenge,
-            child: const Text('Play Again'),
-          ),
-          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Back to Menu'),
           ),

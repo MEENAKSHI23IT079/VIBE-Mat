@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../models/barille_item.dart';
 import '../service/stt_service.dart';
 import '../service/tts_service.dart';
 import 'braille_display_page.dart';
@@ -8,7 +7,7 @@ import '../data/braille_data.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class DictionaryMenuPage extends StatefulWidget {
-  final String module; // "Maths" or "Science"
+  final String module; // Maths or Science
 
   const DictionaryMenuPage({
     Key? key,
@@ -25,9 +24,11 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
 
   bool _sttAvailable = false;
   bool _permissionsGranted = false;
-  String _sttStatusInfo = 'Initializing...';
+  bool _waitingForYes = true;
 
-  // ---------------- CATEGORY LISTS ----------------
+  String _statusText = 'Say YES to open dictionary';
+
+  // ---------------- CATEGORIES ----------------
 
   final List<String> mathsCategories = const [
     'Numbers (0-9)',
@@ -51,39 +52,29 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
   ];
 
   List<String> get categories =>
-      widget.module == 'Science'
-          ? scienceCategories
-          : mathsCategories;
+      widget.module == 'Science' ? scienceCategories : mathsCategories;
 
   // ---------------- INIT ----------------
 
   @override
   void initState() {
     super.initState();
-    _initializeSequence();
+    _initVoiceFlow();
   }
 
-  Future<void> _initializeSequence() async {
+  Future<void> _initVoiceFlow() async {
     await _ttsService.initialize();
+
     _permissionsGranted = await _requestPermissions();
+    if (!_permissionsGranted) return;
 
-    if (!_permissionsGranted) {
-      setState(() {
-        _sttStatusInfo = 'Permissions denied. Voice disabled.';
-      });
-      return;
-    }
+    _sttAvailable = await _sttService.initialize(_onSpeech, _onError);
 
-    _sttAvailable = await _sttService.initialize(
-      _onSttStatus,
-      _onSttError,
+    await _ttsService.speak(
+      "Welcome to ${widget.module} dictionary. Say yes to open the dictionary.",
     );
 
-    setState(() {
-      _sttStatusInfo = _sttAvailable
-          ? 'Tap mic & say a category name'
-          : 'Voice unavailable';
-    });
+    _sttService.startListening(_onSpeech);
   }
 
   Future<bool> _requestPermissions() async {
@@ -95,16 +86,85 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
     return statuses.values.every((s) => s.isGranted);
   }
 
-  void _onSttStatus(String status) {
-    if (kDebugMode) print('STT Status: $status');
+  // ---------------- SPEECH HANDLING ----------------
+
+  void _onSpeech(String text) {
+    final spoken = text.toLowerCase().trim();
+    if (kDebugMode) print("Dictionary heard: $spoken");
+
+    // WAITING FOR YES
+    if (_waitingForYes) {
+      if (spoken.contains('yes')) {
+        _waitingForYes = false;
+        _readCategories();
+      }
+      return;
+    }
+
+    // REPEAT
+    if (spoken.contains('repeat')) {
+      _readCategories();
+      return;
+    }
+
+    // MATCH CATEGORY
+    for (final category in categories) {
+      final keyWord = category.toLowerCase().split(' ').first;
+      if (spoken.contains(keyWord)) {
+        _openCategory(category);
+        return;
+      }
+    }
+
+    _ttsService.speak("Category not recognized. Please repeat.");
   }
 
-  void _onSttError(String error) {
-    if (kDebugMode) print('STT Error: $error');
+  void _onError(String error) {
+    if (kDebugMode) print("STT error: $error");
+    _statusText = 'Voice error';
+    setState(() {});
+  }
+
+  // ---------------- VOICE OUTPUT ----------------
+
+  Future<void> _readCategories() async {
     setState(() {
-      _sttStatusInfo = 'Voice error. Try again.';
+      _statusText = 'Listening for category name';
+    });
+
+    String message = "Available categories are. ";
+    for (final c in categories) {
+      message += "${c.split('(').first}. ";
+    }
+    message += "Say the category name to open.";
+
+    await _ttsService.speak(message);
+  }
+
+  // ---------------- NAVIGATION ----------------
+
+  void _openCategory(String category) async {
+    await _ttsService.speak("Opening $category");
+
+    final data = getBrailleDataList(category);
+    if (data.isEmpty) return;
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BrailleDisplayPage(
+          items: data,
+          title: category,
+        ),
+      ),
+    ).then((_) {
+      _readCategories();
     });
   }
+
+  // ---------------- CLEANUP ----------------
 
   @override
   void dispose() {
@@ -113,89 +173,38 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
     super.dispose();
   }
 
-  // ---------------- VOICE HANDLING ----------------
-
-  void _handleVoiceInput() {
-    if (!_sttAvailable || !_permissionsGranted) return;
-
-    if (_sttService.isListening.value) {
-      _sttService.stopListening();
-      setState(() => _sttStatusInfo = 'Tap mic & say a category name');
-    } else {
-      setState(() => _sttStatusInfo = 'Listening...');
-      _sttService.startListening(_processVoiceResult);
-    }
-  }
-
-  void _processVoiceResult(String result) {
-    final command = result.toLowerCase().trim();
-
-    String? matchedCategory;
-
-    for (final category in categories) {
-      if (command.contains(category.toLowerCase().split(' ').first)) {
-        matchedCategory = category;
-        break;
-      }
-    }
-
-    if (matchedCategory != null) {
-      _ttsService.speak("Opening $matchedCategory");
-      _navigateToCategory(matchedCategory);
-    } else {
-      _ttsService.speak("Category not recognized");
-    }
-  }
-
-  // ---------------- NAVIGATION ----------------
-
-  void _navigateToCategory(String categoryTitle) {
-    final data = getBrailleDataList(categoryTitle);
-
-    if (data.isEmpty) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BrailleDisplayPage(
-          items: data,
-          title: categoryTitle,
-        ),
-      ),
-    ).then((_) {
-      setState(() {
-        _sttStatusInfo = 'Tap mic & say a category name';
-      });
-    });
-  }
-
   // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
-    final canUseVoice = _sttAvailable && _permissionsGranted;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text("${widget.module} Dictionary"),
+        title: Text('${widget.module} Dictionary'),
         actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: _sttService.isListening,
-            builder: (_, listening, __) {
-              return IconButton(
-                icon: Icon(listening ? Icons.mic_off : Icons.mic),
-                onPressed: canUseVoice ? _handleVoiceInput : null,
-              );
-            },
-          ),
+          if (_sttAvailable)
+            ValueListenableBuilder<bool>(
+              valueListenable: _sttService.isListening,
+              builder: (_, listening, __) {
+                return IconButton(
+                  icon: Icon(listening ? Icons.mic_off : Icons.mic),
+                  onPressed: () {
+                    if (listening) {
+                      _sttService.stopListening();
+                    } else {
+                      _sttService.startListening(_onSpeech);
+                    }
+                  },
+                );
+              },
+            ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             child: Text(
-              _sttStatusInfo,
+              _statusText,
               style: const TextStyle(fontStyle: FontStyle.italic),
             ),
           ),
@@ -204,10 +213,9 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
             child: ListView.builder(
               itemCount: categories.length,
               itemBuilder: (_, i) => ListTile(
-                leading: const Icon(Icons.list_alt),
                 title: Text(categories[i]),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _navigateToCategory(categories[i]),
+                onTap: () => _openCategory(categories[i]),
               ),
             ),
           ),
