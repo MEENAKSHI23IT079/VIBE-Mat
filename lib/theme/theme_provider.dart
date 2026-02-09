@@ -87,11 +87,15 @@ class ThemeProvider extends ChangeNotifier {
         );
 
       // ---------------- BASIC DARK ----------------
-      case AppTheme.dark:
-        return ThemeData.dark().copyWith(
-          scaffoldBackgroundColor: const Color(0xFF303030),
-          textTheme: _largeTextTheme(Colors.white),
-        );
+case AppTheme.dark:
+  return ThemeData.dark().copyWith(
+    scaffoldBackgroundColor: const Color(0xFF303030),
+    textTheme: _largeTextTheme(Colors.white),
+    elevatedButtonTheme: _largeButtonTheme(
+      background: Colors.grey.shade800,
+      foreground: Colors.white,
+    ),
+  );
 
       // ---------------- LIGHT ----------------
       case AppTheme.light:

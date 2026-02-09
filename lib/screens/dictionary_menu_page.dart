@@ -69,7 +69,7 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
     if (!_permissionsGranted) return;
 
     _sttAvailable = await _sttService.initialize(_onSpeech, _onError);
-
+    _sttService.stopListening();
     await _ttsService.speak(
       "Welcome to ${widget.module} dictionary. Say yes to open the dictionary.",
     );
@@ -115,7 +115,7 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
         return;
       }
     }
-
+    _sttService.stopListening();
     _ttsService.speak("Category not recognized. Please repeat.");
   }
 
@@ -128,18 +128,32 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
   // ---------------- VOICE OUTPUT ----------------
 
   Future<void> _readCategories() async {
-    setState(() {
-      _statusText = 'Listening for category name';
-    });
+  setState(() {
+    _statusText = 'Listening for category name';
+  });
 
-    String message = "Available categories are. ";
-    for (final c in categories) {
-      message += "${c.split('(').first}. ";
-    }
-    message += "Say the category name to open.";
+  // Stop listening while speaking
+  await _sttService.stopListening();
 
-    await _ttsService.speak(message);
+  // Intro
+  await _ttsService.speak(
+    "You can learn the following sections in ${widget.module}.",
+  );
+
+  // Read each category clearly
+  for (final c in categories) {
+    final name = c.split('(').first.trim();
+    await _ttsService.speak(name);
   }
+
+  // Clear question prompt
+  await _ttsService.speak(
+    "What do you want to learn now? Please say the section name.",
+    onComplete: () {
+      _sttService.startListening(_onSpeech);
+    },
+  );
+}
 
   // ---------------- NAVIGATION ----------------
 

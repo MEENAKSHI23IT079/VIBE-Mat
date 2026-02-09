@@ -95,45 +95,61 @@ class _PracticePageState extends State<PracticePage> {
     attemptsForQuestion = 0;
     _feedback = '';
     _answerController.clear();
-
+    await _sttService.stopListening();
     await _ttsService.speak(
       "Level $currentLevel of ${levelMap.length}. "
       "Question ${currentQuestion + 1}. Identify this Braille symbol.",
     );
+    await _sttService.stopListening();
     await _ttsService.speak(_currentItem!.dotsAudioDescription);
     setState(() {});
   }
 
   // ---------- ANSWER CHECK ----------
   Future<void> _checkAnswer(String answer) async {
-    attemptsForQuestion++;
-    totalAttempts++;
+  attemptsForQuestion++;
+  totalAttempts++;
 
-    final correct = answer.trim().toLowerCase() ==
-        _currentItem!.displayName.toLowerCase();
+  final userAnswer = answer.trim().toLowerCase();
 
-    if (!correct) {
-      _feedback = "Try again";
-      await _ttsService.speak("Incorrect. Try again.");
-      setState(() {});
-      return;
-    }
+  final correctName = _currentItem!.name.toLowerCase();
+  final correctSymbol = _currentItem!.symbol.toLowerCase();
 
-    await _ttsService.speak("Correct");
+  final bool isCorrect =
+      userAnswer == correctName ||
+      userAnswer == correctSymbol;
 
-    currentQuestion++;
-    if (currentQuestion >= questionsPerLevel) {
-      _finishLevel();
-    } else {
-      _nextQuestion();
-    }
+  if (!isCorrect) {
+    _feedback = "Incorrect. Try again.";
+    await _sttService.stopListening();
+    await _ttsService.speak(
+      "Incorrect. Please try again. Identify the braille symbol.",
+    );
+    setState(() {});
+    return;
   }
+
+  // ✅ CORRECT ANSWER
+  _feedback = "Correct!";
+  await _sttService.stopListening();
+  await _ttsService.speak("Correct answer.");
+
+  currentQuestion++;
+
+  if (currentQuestion >= questionsPerLevel) {
+    _finishLevel();
+  } else {
+    _nextQuestion();
+  }
+}
+
 
   // ---------- STT ----------
   void _startListening() async {
     if (_listening) return;
 
     setState(() => _listening = true);
+    await _sttService.stopListening();
     await _ttsService.speak("Please say your answer");
     _sttService.startListening(_onSpeechResult);
   }
@@ -154,7 +170,7 @@ class _PracticePageState extends State<PracticePage> {
         : duration < 120
             ? "Good job. Keep practicing!"
             : "Practice makes progress. Never give up!";
-
+    await _sttService.stopListening();
     await _ttsService.speak(
       "Level completed. You took $duration seconds "
       "with $totalAttempts attempts. $message",

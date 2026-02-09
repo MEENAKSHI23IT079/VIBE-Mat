@@ -42,31 +42,47 @@ class _ModuleSelectionPageState extends State<ModuleSelectionPage> {
 
   // ---------------- INIT VOICE ----------------
   Future<void> _initVoice() async {
-    await Permission.microphone.request();
+  await Permission.microphone.request();
 
-    await _ttsService.initialize();
+  await _ttsService.initialize();
 
-    _sttAvailable = await _sttService.initialize(
-      _onVoiceCommand,
-      (error) {
-        setState(() => _statusText = 'Voice error occurred');
-      },
-    );
+  _sttAvailable = await _sttService.initialize(
+    _onVoiceCommand,
+    (error) {
+      setState(() => _statusText = 'Voice error occurred');
+    },
+  );
 
-    await _ttsService.speak(
-      "You are in the ${widget.module} module. "
-      "Say Dictionary, Practice, or Challenge."
-    );
+  await _sttService.stopListening();
 
-    if (_sttAvailable) {
-      _startListening();
-    }
-  }
+  // 🔊 Read module + options clearly
+  await _ttsService.speak(
+    "You are in the ${widget.module} module.",
+  );
 
-  void _startListening() {
-    if (!_sttAvailable || _isNavigating) return;
-    _sttService.startListening(_onVoiceCommand);
-  }
+  await _ttsService.speak(
+    "Available options are.",
+  );
+
+  await _ttsService.speak("Dictionary.");
+  await _ttsService.speak("Practice.");
+  await _ttsService.speak("Challenge.");
+
+  await _ttsService.speak(
+    "What do you want to choose?",
+    onComplete: () {
+      if (_sttAvailable) {
+        _startListening();
+      }
+    },
+  );
+}
+
+void _startListening() {
+  if (!_sttAvailable || _isNavigating) return;
+
+  _sttService.startListening(_onVoiceCommand);
+}
 
   // ---------------- VOICE COMMANDS ----------------
   void _onVoiceCommand(String command) async {
@@ -76,6 +92,7 @@ class _ModuleSelectionPageState extends State<ModuleSelectionPage> {
 
     // 📘 DICTIONARY
     if (spoken.contains('dictionary')) {
+      await _sttService.stopListening();
       await _ttsService.speak('Opening dictionary');
       _navigate(DictionaryMenuPage(module: widget.module));
       return;
@@ -83,6 +100,7 @@ class _ModuleSelectionPageState extends State<ModuleSelectionPage> {
 
     // ✍ PRACTICE
     if (spoken.contains('practice')) {
+      await _sttService.stopListening();
       await _ttsService.speak('Opening practice');
       _navigate(PracticePage(module: widget.module));
       return;
@@ -90,6 +108,7 @@ class _ModuleSelectionPageState extends State<ModuleSelectionPage> {
 
     // 🏆 CHALLENGE
     if (spoken.contains('challenge')) {
+      await _sttService.stopListening();
       await _ttsService.speak('Opening challenge');
       _navigate(ChallengePage(module: widget.module));
       return;
@@ -97,12 +116,14 @@ class _ModuleSelectionPageState extends State<ModuleSelectionPage> {
 
     // 🔙 BACK
     if (spoken.contains('back')) {
+      await _sttService.stopListening();
       await _ttsService.speak('Going back');
       Navigator.pop(context);
       return;
     }
 
     // ❌ UNKNOWN
+    await _sttService.stopListening();
     await _ttsService.speak(
       'Command not recognized. Say Dictionary, Practice, or Challenge.'
     );
@@ -131,7 +152,7 @@ class _ModuleSelectionPageState extends State<ModuleSelectionPage> {
       setState(() {
         _statusText = 'Say Dictionary, Practice, or Challenge';
       });
-
+      await _sttService.stopListening();
       await _ttsService.speak(
         "You are back in the ${widget.module} module."
       );

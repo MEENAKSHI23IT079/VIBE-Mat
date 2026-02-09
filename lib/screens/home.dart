@@ -54,6 +54,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (_sttAvailable) {
+      await _sttService.stopListening();
       await _ttsService.speak(
         "Welcome to the Braille Learning Hub. "
         "Say Maths or Science to begin learning. "
@@ -138,6 +139,7 @@ class _HomePageState extends State<HomePage> {
 
     // 📘 MATHS
     if (spoken.contains('math')) {
+      await _sttService.stopListening();
       await _ttsService.speak('Opening Maths module');
       _navigate(const ModuleSelectionPage(module: 'Maths'));
       return;
@@ -145,12 +147,14 @@ class _HomePageState extends State<HomePage> {
 
     // 🔬 SCIENCE
     if (spoken.contains('science')) {
+      await _sttService.stopListening();
       await _ttsService.speak('Opening Science module');
       _navigate(const ModuleSelectionPage(module: 'Science'));
       return;
     }
 
     // ❌ UNKNOWN
+    await _sttService.stopListening();
     await _ttsService.speak(
       'Command not recognized. Say Maths, Science, or Theme.',
     );
@@ -178,7 +182,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _voiceCommandStatus = 'Say Maths, Science, or Theme';
       });
-
+      await _sttService.stopListening();
       await _ttsService.speak(
         'You are back on the home screen. '
         'Say Maths or Science to continue.'

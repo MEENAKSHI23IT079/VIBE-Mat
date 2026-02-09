@@ -44,6 +44,7 @@ class _BrailleDisplayPageState extends State<BrailleDisplayPage> {
   BrailleItem get currentItem => widget.items[_currentIndex];
 
   void _speakCurrentItem() {
+    _sttService.stopListening();
     _ttsService.speak(currentItem.audioDescription);
   }
 
@@ -85,84 +86,154 @@ class _BrailleDisplayPageState extends State<BrailleDisplayPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        actions: [
-          if (_sttAvailable)
-            ValueListenableBuilder<bool>(
-                valueListenable: _sttService.isListening,
-                builder: (context, isListening, child) {
-                  return IconButton(
-                    icon: Icon(isListening ? Icons.mic_off : Icons.mic),
-                    tooltip: 'Voice commands: Next, Previous, Speak',
-                    onPressed: () {
-                      if (isListening) {
-                        _sttService.stopListening();
-                      } else {
-                        _sttService.startListening(_handleVoiceCommand);
-                      }
-                    },
-                  );
-                }
-            ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text(widget.title),
+      actions: [
+        if (_sttAvailable)
+          ValueListenableBuilder<bool>(
+            valueListenable: _sttService.isListening,
+            builder: (context, isListening, _) {
+              return IconButton(
+                icon: Icon(isListening ? Icons.mic_off : Icons.mic),
+                tooltip: 'Voice: next, previous, read',
+                onPressed: () {
+                  if (isListening) {
+                    _sttService.stopListening();
+                  } else {
+                    _sttService.startListening(_handleVoiceCommand);
+                  }
+                },
+              );
+            },
+          ),
+      ],
+    ),
+
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            // Display Character Name and Symbol
+          children: [
+
+            /// 🔹 TITLE AREA
             Text(
               currentItem.name,
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            if (currentItem.symbol.isNotEmpty && currentItem.symbol != currentItem.name)
-              Text(
-                '"${currentItem.symbol}"',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
+
+            if (currentItem.symbol.isNotEmpty &&
+                currentItem.symbol != currentItem.name)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '"${currentItem.symbol}"',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontStyle: FontStyle.italic),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            const SizedBox(height: 40),
 
-            // Display Braille Dots
-            Center(child: BrailleDotsWidget(item: currentItem)),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
-            // Speak Button
+            /// 🔹 BRAILLE DOTS (CENTERED & VISIBLE)
+            Expanded(
+              child: Center(
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: BrailleDotsWidget(
+                      item: currentItem,
+                      dotSize: 44, // 🔥 BIGGER DOTS
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            /// 🔹 SPEAK BUTTON
             ElevatedButton.icon(
               icon: const Icon(Icons.volume_up),
-              label: const Text('Speak Description'),
+              label: const Text(
+                'Read Description',
+                style: TextStyle(fontSize: 18),
+              ),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+              ),
               onPressed: _speakCurrentItem,
             ),
-            const Spacer(), // Pushes navigation buttons to the bottom
 
-            // Navigation Buttons
+            const SizedBox(height: 16),
+
+            /// 🔹 NAVIGATION CONTROLS (CLEAR & LARGE)
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Previous'),
-                  onPressed: _currentIndex > 0 ? _goToPrevious : null, // Disable if first item
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Previous'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                    ),
+                    onPressed:
+                        _currentIndex > 0 ? _goToPrevious : null,
+                  ),
                 ),
-                Text('${_currentIndex + 1} / ${widget.items.length}'), // Page number
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Next'),
-                  onPressed: _currentIndex < widget.items.length - 1 ? _goToNext : null, // Disable if last item
+
+                const SizedBox(width: 12),
+
+                Column(
+                  children: [
+                    Text(
+                      '${_currentIndex + 1}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'of ${widget.items.length}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.arrow_forward),
+                    label: const Text('Next'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                    ),
+                    onPressed:
+                        _currentIndex < widget.items.length - 1
+                            ? _goToNext
+                            : null,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 20), // Spacing at the bottom
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
