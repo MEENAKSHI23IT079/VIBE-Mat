@@ -31,12 +31,12 @@ class _DictionaryMenuPageState extends State<DictionaryMenuPage> {
   // ---------------- CATEGORIES ----------------
 
   final List<String> mathsCategories = const [
-    'Numbers (0-9)',
+    'Indicators',
+    'Numbers',
     'Basic Operations',
     'Special Symbols',
     'Brackets',
     'Greek Letters',
-    'Indicators',
     'Fractions & Powers',
     'Advanced Math',
     'Algebra',
